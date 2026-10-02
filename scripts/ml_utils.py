@@ -198,7 +198,13 @@ def simple_svg_bar_chart(
         bar_width = (value / max_value) * plot_width
         lines.append(f'<text x="{margin_left - 12}" y="{y + bar_height * 0.65:.1f}" text-anchor="end" font-family="Arial" font-size="13" fill="#27343b">{escape_xml(label[:32])}</text>')
         lines.append(f'<rect x="{margin_left}" y="{y:.1f}" width="{bar_width:.1f}" height="{bar_height:.1f}" fill="{color}" rx="4"/>')
-        lines.append(f'<text x="{margin_left + bar_width + 8:.1f}" y="{y + bar_height * 0.65:.1f}" font-family="Arial" font-size="13" fill="#27343b">{value:,.3g}</text>')
+        if abs(value - round(value)) < 1e-5:
+            val_str = f"{int(round(value)):,}"
+        elif value < 1:
+            val_str = f"{value:.3f}"
+        else:
+            val_str = f"{value:,.2f}"
+        lines.append(f'<text x="{margin_left + bar_width + 8:.1f}" y="{y + bar_height * 0.65:.1f}" font-family="Arial" font-size="13" fill="#27343b">{val_str}</text>')
 
     lines.append("</svg>")
     path.write_text("\n".join(lines))

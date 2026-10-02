@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Predicting Organic Content Decay &amp; Optimizing Editorial Refresh Capacity — FlyRank ML Research</title>
+<meta name="description" content="A machine learning research paper and decision-support action engine built on 30,000 pages of real Google Search performance data from the FlyRank warehouse.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#0a0f1d;font-family:Inter,system-ui,-apple-system,sans-serif;color:#1e293b;transition:background 0.3s ease}
+a{color:inherit}
+
+/* ── Top Chrome & Door Switcher ── */
+.chrome{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:14px 28px;background:rgba(10,15,29,0.92);backdrop-filter:blur(12px);color:#f1f5f9;border-bottom:1px solid rgba(255,255,255,0.08)}
+.chrome-brand{display:flex;align-items:center;gap:10px}
+.chrome-badge{background:linear-gradient(135deg,#059669,#10b981);color:#fff;font:700 11px 'Space Mono',monospace;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:0.05em}
+.chrome h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-0.01em;color:#f8fafc}
+.chrome .sub{color:#94a3b8;font-size:12.5px;margin-left:4px}
+.chrome .sub b{color:#34d399;font-weight:600}
+.tabs{margin-left:auto;display:flex;gap:6px;background:rgba(255,255,255,0.05);padding:3px;border-radius:999px;border:1px solid rgba(255,255,255,0.1)}
+.tabs button{padding:7px 16px;border-radius:999px;border:none;background:transparent;color:#94a3b8;font:600 12.5px Inter,sans-serif;cursor:pointer;transition:all 0.2s}
+.tabs button:hover{color:#f8fafc;background:rgba(255,255,255,0.05)}
+.tabs button.active{background:#10b981;color:#0a0f1d;font-weight:700;box-shadow:0 2px 8px rgba(16,185,129,0.3)}
+
+/* ── Multi-Door Stage Layout ── */
+.stage{display:grid;gap:18px;padding:18px;grid-template-columns:1fr 1fr 1fr;min-height:calc(100vh - 66px)}
+.pane{overflow-y:auto;border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.5);background:#fff;position:relative}
+.pane .door-tag{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:10px 22px;
+  font:700 11.5px 'Space Mono',monospace;letter-spacing:0.12em;border-bottom:1px solid rgba(0,0,0,0.08);backdrop-filter:blur(8px)}
+.pane1 .door-tag{background:rgba(15,23,42,0.95);color:#93c5fd}
+.pane2 .door-tag{background:rgba(6,44,30,0.95);color:#6ee7b7}
+.pane3 .door-tag{background:rgba(67,20,7,0.95);color:#fed7aa}
+
+/* View states */
+body[data-view="d1"] .pane2,body[data-view="d1"] .pane3{display:none}
+body[data-view="d2"] .pane1,body[data-view="d2"] .pane3{display:none}
+body[data-view="d3"] .pane1,body[data-view="d3"] .pane2{display:none}
+body[data-view="d1"] .stage,body[data-view="d2"] .stage,body[data-view="d3"] .stage{
+  grid-template-columns:minmax(0,1040px);justify-content:center;padding:24px 16px}
+
+figure{margin:0}
+svg{width:100%;height:auto;display:block}
+img.chart-img{width:100%;height:auto;display:block;border-radius:8px}
+
+/* ══════════════════════════════════════════════════════════════
+   DOOR 1: ACADEMIC / ML RESEARCH PAPER (Serif, Rigorous, Formal)
+   ══════════════════════════════════════════════════════════════ */
+.p1{padding:44px 56px 80px;background:#fcfbf7;color:#1a202c;font:17px/1.68 'Source Serif 4',Georgia,serif}
+.p1-header{border-bottom:2px solid #0f172a;padding-bottom:22px;margin-bottom:28px}
+.p1-venue{font:600 12px/1.4 Inter,sans-serif;letter-spacing:0.14em;text-transform:uppercase;color:#64748b;margin:0 0 14px}
+.p1 h1{font:700 32px/1.22 'Source Serif 4',Georgia,serif;margin:0 0 14px;color:#0f172a;letter-spacing:-0.015em}
+.p1-byline{font:14.5px Inter,sans-serif;color:#475569;margin:0 0 4px}
+.p1-byline span{color:#059669;font-weight:600}
+.p1-meta{font:13px/1.5 'Space Mono',monospace;color:#64748b;margin-top:8px}
+.p1 h2{font:700 20px/1.3 'Source Serif 4',Georgia,serif;margin:38px 0 12px;color:#0f2942;border-bottom:1px solid #e2e8f0;padding-bottom:6px}
+.p1 h3{font:700 16.5px/1.35 'Source Serif 4',Georgia,serif;margin:22px 0 8px;color:#1e293b}
+.p1 p{margin:0 0 14px;text-align:justify;hyphens:auto}
+.p1 ul,.p1 ol{margin:0 0 16px;padding-left:26px}
+.p1 li{margin-bottom:8px}
+.p1-abstract{background:#f1f5f9;border-left:4px solid #0f2942;border-radius:0 8px 8px 0;padding:20px 24px;margin:24px 0 32px}
+.p1-abstract h2{margin:0 0 10px;font-size:16px;border:none;padding:0;color:#0f172a;text-transform:uppercase;letter-spacing:0.06em;font-family:Inter,sans-serif}
+.p1-abstract p{font-size:15.5px;line-height:1.6;margin:0;color:#334155}
+.p1 table{width:100%;border-collapse:collapse;font:14px/1.5 Inter,sans-serif;margin:18px 0 24px}
+.p1 caption{caption-side:top;text-align:left;font:600 13px Inter,sans-serif;color:#475569;padding-bottom:8px}
+.p1 th{border-top:2px solid #0f172a;border-bottom:1px solid #0f172a;background:#f8fafc;padding:8px 12px;font-weight:700;text-align:left}
+.p1 td{border-bottom:1px solid #e2e8f0;padding:8px 12px;vertical-align:top}
+.p1 tr.highlight td{background:#ecfdf5;font-weight:600}
+.p1 figure{margin:22px 0;padding:16px;border:1px solid #e2e8f0;background:#ffffff;border-radius:10px}
+.p1 figcaption{font:13px/1.5 Inter,sans-serif;color:#64748b;margin-top:10px}
+.p1 code{font:13.5px 'Space Mono',monospace;background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#0f2942}
+.p1 pre{font:13px/1.6 'Space Mono',monospace;background:#f8fafc;border:1px solid #e2e8f0;padding:14px 18px;border-radius:8px;overflow-x:auto}
+.p1 .repro-box{display:grid;grid-template-columns:1fr 1fr;gap:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin:18px 0}
+.p1-ack{margin-top:38px;border-top:1px solid #cbd5e1;padding-top:18px;font-size:14.5px;color:#475569}
+
+/* ══════════════════════════════════════════════════════════════
+   DOOR 2: ENGINEERING CASE STUDY (Interactive, Modern, Metrics)
+   ══════════════════════════════════════════════════════════════ */
+.p2{background:#fafafa;color:#0f172a;font:16px/1.6 Inter,system-ui,sans-serif;padding-bottom:80px}
+.p2-hero{background:linear-gradient(150deg,#0a0f1d 0%,#1e293b 100%);color:#f8fafc;padding:48px 52px 42px}
+.p2-kicker{display:inline-block;font:700 11.5px 'Space Mono',monospace;letter-spacing:0.15em;color:#34d399;text-transform:uppercase;margin-bottom:14px;background:rgba(52,211,153,0.1);padding:4px 10px;border-radius:4px}
+.p2-hero h1{font:800 36px/1.18 Inter,sans-serif;letter-spacing:-0.03em;margin:0 0 14px;color:#ffffff}
+.p2-lead{font-size:18px;line-height:1.55;color:#cbd5e1;margin:0 0 28px;max-width:760px}
+.p2-metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.p2-card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:20px;backdrop-filter:blur(6px)}
+.p2-card .lbl{font:600 12px Inter,sans-serif;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em}
+.p2-card .val{font:800 38px/1.1 Inter,sans-serif;letter-spacing:-0.03em;margin:6px 0;color:#f8fafc}
+.p2-card .val.good{color:#34d399}
+.p2-card .sub{font-size:12.5px;color:#cbd5e1}
+.p2-cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font:600 13.5px Inter,sans-serif;text-decoration:none;transition:all 0.2s}
+.btn-primary{background:#10b981;color:#0a0f1d;font-weight:700}
+.btn-primary:hover{background:#34d399;box-shadow:0 4px 12px rgba(16,185,129,0.4)}
+.btn-secondary{background:rgba(255,255,255,0.1);color:#f1f5f9;border:1px solid rgba(255,255,255,0.2)}
+.btn-secondary:hover{background:rgba(255,255,255,0.18)}
+
+.p2 section{padding:0 52px;max-width:980px;margin:36px auto 0}
+.p2 h2{font:800 24px/1.25 Inter,sans-serif;letter-spacing:-0.02em;margin:0 0 14px;color:#0f172a}
+.p2 h3{font:700 17px/1.35 Inter,sans-serif;margin:24px 0 10px;color:#1e293b}
+.p2 p{margin:0 0 14px}
+.p2 ul,.p2 ol{margin:0 0 16px;padding-left:24px}
+.p2 li{margin-bottom:8px}
+
+.p2-interactive-table{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,0.05);margin:20px 0}
+.p2-interactive-table table{width:100%;border-collapse:collapse;font:14px Inter,sans-serif}
+.p2-interactive-table th{background:#f8fafc;padding:12px 16px;text-align:left;font-weight:700;color:#334155;border-bottom:1px solid #e2e8f0}
+.p2-interactive-table td{padding:12px 16px;border-bottom:1px solid #f1f5f9}
+.p2-interactive-table tr:hover td{background:#f8fafc}
+.badge-act{display:inline-block;padding:3px 8px;border-radius:999px;font:700 11.5px 'Space Mono',monospace}
+.badge-act.ctr{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0}
+.badge-act.refresh{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.badge-act.monitor{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.badge-act.eng{background:#fef3c7;color:#d97706;border:1px solid #fde68a}
+
+.p2-pipeline-box{background:#0a0f1d;border-radius:12px;padding:22px;color:#f8fafc;margin:20px 0}
+.p2-pipeline-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:center}
+.p2-pipe-node{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:14px;text-align:center}
+.p2-pipe-node b{display:block;font-size:13px;color:#f1f5f9;margin-bottom:4px}
+.p2-pipe-node span{font-size:11px;color:#94a3b8}
+
+/* ══════════════════════════════════════════════════════════════
+   DOOR 3: PRACTITIONER PLAYBOOK (Editorial, Action-Oriented)
+   ══════════════════════════════════════════════════════════════ */
+.p3{background:#fffdfa;color:#1e293b;font:18px/1.65 Inter,system-ui,sans-serif;padding-bottom:80px}
+.p3-wrap{max-width:780px;margin:0 auto;padding:0 36px}
+.p3-head{padding-top:48px;padding-bottom:24px;border-bottom:1px solid #f1f5f9}
+.p3-kicker{font:700 12px 'Space Mono',monospace;letter-spacing:0.14em;color:#059669;text-transform:uppercase;margin:0 0 12px}
+.p3 h1{font:800 36px/1.2 Inter,sans-serif;letter-spacing:-0.025em;margin:0 0 16px;color:#0f172a}
+.p3-deck{font-size:20px;line-height:1.55;color:#475569;margin:0 0 20px}
+.p3-meta{display:flex;gap:14px;flex-wrap:wrap;font:13px Inter,sans-serif;color:#64748b;padding:10px 0;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+
+.p3-tldr{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:22px 26px;margin:28px 0}
+.p3-tldr h2{font:800 14px 'Space Mono',monospace;letter-spacing:0.08em;color:#166534;margin:0 0 14px;text-transform:uppercase}
+.p3-tldr dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:15.5px}
+.p3-tldr dt{font-weight:700;color:#166534}
+.p3-tldr dd{margin:0;color:#1e293b}
+
+.p3-playbook-card{background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin:24px 0;box-shadow:0 4px 12px rgba(15,23,42,0.03)}
+.p3-playbook-card.hl{border-left:5px solid #059669}
+.p3-playbook-card h3{margin:0 0 10px;font-size:19px;font-weight:800;color:#0f172a}
+.p3-rule-row{display:grid;grid-template-columns:120px 1fr;gap:12px;margin:8px 0;font-size:15px}
+.p3-rule-row b{color:#475569}
+.p3-rule-row.do b{color:#059669}
+.p3-rule-row.dont b{color:#dc2626}
+
+.p3-roi-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:22px 26px;margin:28px 0}
+.p3-roi-box h3{margin:0 0 10px;color:#1e40af;font-size:18px}
+
+/* Global Footer */
+.global-footer{background:#0a0f1d;color:#94a3b8;padding:36px 28px;text-align:center;font-size:14px;border-top:1px solid rgba(255,255,255,0.08)}
+.global-footer a{color:#34d399;text-decoration:none}
+.global-footer a:hover{text-decoration:underline}
+
+@media(max-width:960px){
+  .stage{grid-template-columns:1fr}
+  .chrome{padding:12px 16px}
+  .tabs{margin-left:0;width:100%;justify-content:center}
+  .p1{padding:28px 20px}
+  .p2 section{padding:0 20px}
+  .p2-hero{padding:32px 20px}
+  .p3-wrap{padding:0 20px}
+  .p2-pipeline-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body data-view="all">
+
+<!-- Top Navigation & Door Selector -->
+<header class="chrome">
+  <div class="chrome-brand">
+    <span class="chrome-badge">FlyRank ML Research</span>
+    <h1>Content Opportunity Scoring</h1>
+    <span class="sub">Lane 2 Capstone · <b>Dasi Nithin</b></span>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Perspective view toggles">
+    <button class="active" data-view="all" role="tab" aria-selected="true">All 3 Doors</button>
+    <button data-view="d1" role="tab" aria-selected="false">Door 1: ML Researcher</button>
+    <button data-view="d2" role="tab" aria-selected="false">Door 2: Tech Lead / Employer</button>
+    <button data-view="d3" role="tab" aria-selected="false">Door 3: SEO Practitioner</button>
+  </div>
+</header>
+
+<main class="stage">
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       DOOR 1: ACADEMIC / ML RESEARCH PAPER
+       ════════════════════════════════════════════════════════════════════════ -->
+  <article class="pane pane1" aria-label="Door 1 — Formal Research Paper">
+    <div class="door-tag">
+      <span>DOOR 1 · RESEARCH PAPER · FORMAL EVALUATION</span>
+      <span>IEEE / ACM FORMAT STYLE</span>
+    </div>
+    <div class="p1">
+      <header class="p1-header">
+        <div class="p1-venue">Applied Search Intelligence · FlyRank ML Internship 2026</div>
+        <h1>Predicting Organic Search Content Decay &amp; Optimizing Editorial Refresh Capacity: A Grouped Client-Holdout Study</h1>
+        <p class="p1-byline">By <b>Dasi Nithin</b> · Technical Track Submission</p>
+        <p class="p1-meta">Dataset Release: <code>v20260703</code> · Snapshot: 30,000 URLs · Evaluated on Held-Out Client Domains · Random Seed: 42</p>
+      </header>
+
+      <!-- Section 0: Abstract -->
+      <section class="p1-abstract">
+        <h2>0. Abstract</h2>
+        <p>
+          How should enterprise search teams allocate strictly constrained editorial refresh bandwidth across tens of thousands of decaying URLs without wasting human capital on noisy, mean-reverting ranking drops? We analyze 30,000 pseudonymized web pages from the FlyRank Search Intelligence warehouse across 44 observable search, crawl, and engagement metrics over a 90-day baseline window. We formulate content decay prioritization as a supervised decline classification problem evaluated strictly under a grouped client-holdout split (27,675 train rows across 26 client domains vs. 2,325 blind test rows across 6 held-out client domains) to eradicate cross-domain memorization and backlink leakage. While an auditable industry baseline heuristic rule yields a Precision@50 of 0.240 and an ROC-AUC of 0.627, a calibrated Random Forest classifier achieves a Precision@50 of 0.680 (a 2.83× efficiency lift) and an ROC-AUC of 0.747 on unseen client domains, primarily driven by impression presence consistency (16.1% importance) and total query volume scale (12.8%). The resulting decision system transforms raw probabilities into an actionable queue categorized into five explicit editorial playbooks (<code>refresh_and_review_ctr</code>, <code>refresh</code>, <code>refresh_and_review_engagement</code>, <code>expand_and_refresh</code>, and <code>monitor</code>) with human-verifiable reason codes, proving that machine learning can reliably triage monthly editorial sprint queues while strictly enforcing human-in-the-loop review.
+        </p>
+      </section>
+
+      <!-- Section 1: Problem Framing -->
+      <section>
+        <h2>1. Introduction &amp; Problem Statement</h2>
+        <p>
+          Organic search content portfolios represent large-scale digital assets subject to continuous performance depreciation. Over time, published content experiences structural decay caused by shifting consumer search intent, competitive content releases, and search engine algorithm updates. However, content modification capacity is strictly bounded: a typical enterprise content marketing team has an operational budget of approximately <b>50 deep-dive page refreshes per monthly sprint</b>.
+        </p>
+        <p>
+          The decision this research supports is an operational ordering problem: <i>Given thousands of candidate pages across an enterprise portfolio, which 50 pages should editors inspect first, and what specific remediation should they perform?</i> In this context, a false positive misallocates 2–4 hours of expensive editorial labor rewriting content that would have naturally mean-reverted, while a false negative permits high-value traffic pillars to silently fall off Page 1 of Search Engine Results Pages (SERPs).
+        </p>
+      </section>
+
+      <!-- Section 2: Data -->
+      <section>
+        <h2>2. Data Specification &amp; Public Safety</h2>
+        <p>
+          We utilize the FlyRank Applied Search Intelligence dataset (<code>data/raw/content_refresh_anonymized.csv</code>), comprising <b>30,000 pseudonymized content assets</b> spanning 32 client domains and 44 observable metrics. The observation window covers a fixed 90-day baseline window ending at snapshot date <code>2026-06-30</code>.
+        </p>
+        <p>
+          <b>Public Safety Protocol:</b> In accordance with FlyRank data-use standards, all raw URLs, client domain names, page titles, and private query text are stripped. Identifier tokens (<code>content_id</code>, <code>client_id</code>) are cryptographically salted hashes. All features describe observable search and on-page analytics behavior; no claims are made regarding Google's proprietary internal ranking weights.
+        </p>
+        <p>
+          <b>Feature Exclusions:</b> Forward outcome variables (<code>trend_direction</code>, <code>trend_pct</code>) and post-period metrics were strictly excluded from the input matrix to eliminate target leakage. Client identifiers were omitted from the feature space to prevent memorization of domain-level conversion baselines.
+        </p>
+      </section>
+
+      <!-- Section 3: Methodology -->
+      <section>
+        <h2>3. Methodology &amp; Validation Architecture</h2>
+        <p>
+          The ground truth label <code>is_declining_label</code> is defined as $\mathbb{I}(\text{trend\_direction} = \text{'down'})$, reflecting forward 30-day organic click loss relative to the prior period (portfolio base rate = 54.2%).
+        </p>
+        <p>
+          <b>Grouped Client Holdout Split:</b> Standard random cross-validation randomly distributes pages from the same website into training and test folds. This creates severe optimistic leakage because domain authority, backlink profiles, and site-wide template factors are shared. We strictly enforce a **Grouped Client Holdout Split**: 26 client domains (27,675 pages) form the training set, and 6 completely unseen client domains (2,325 pages) form the blind test set.
+        </p>
+        <p>
+          <b>Benchmark Models:</b> We evaluate three supervised classifiers against a transparent SEO heuristic baseline score:
+        </p>
+        <ul>
+          <li><b>Heuristic Baseline:</b> Weighted composite score: $0.40 \cdot \text{pct\_rank}(\log(\text{impressions})) + 0.30 \cdot \text{pct\_rank}(\text{days\_since\_update}) + 0.25 \cdot \text{position\_gap} + 0.05 \cdot \text{depth\_gap}$.</li>
+          <li><b>Logistic Regression:</b> L2-regularized linear model with balanced class weighting.</li>
+          <li><b>Decision Tree:</b> Non-linear decision rules bounded at <code>max_depth=6</code>.</li>
+          <li><b>Random Forest:</b> Ensemble of 100 decorrelated trees with <code>max_depth=12</code>.</li>
+        </ul>
+      </section>
+
+      <!-- Section 4: Results -->
+      <section>
+        <h2>4. Empirical Results &amp; Model Comparison</h2>
+        <p>
+          All models were evaluated on the blind held-out client test set ($N=2,325$). Precision was computed at the operational decision capacities ($K=20, 50, 100$).
+        </p>
+        <table>
+          <caption>Table 1: Performance metrics evaluated on the blind test client partition (2,325 pages across 6 held-out domains).</caption>
+          <thead>
+            <tr>
+              <th>Model Architecture</th>
+              <th>P@20</th>
+              <th>P@50 (Primary)</th>
+              <th>P@100</th>
+              <th>ROC-AUC</th>
+              <th>PR-AUC (Avg Prec)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Heuristic Baseline Rule</td>
+              <td>0.150</td>
+              <td>0.240</td>
+              <td>0.360</td>
+              <td>0.627</td>
+              <td>0.468</td>
+            </tr>
+            <tr>
+              <td>Logistic Regression</td>
+              <td>0.350</td>
+              <td>0.400</td>
+              <td>0.440</td>
+              <td>0.700</td>
+              <td>0.522</td>
+            </tr>
+            <tr>
+              <td>Decision Tree (depth=6)</td>
+              <td>0.550</td>
+              <td>0.620</td>
+              <td>0.600</td>
+              <td>0.742</td>
+              <td>0.575</td>
+            </tr>
+            <tr class="highlight">
+              <td><b>Random Forest (Selected)</b></td>
+              <td><b>0.700</b></td>
+              <td><b>0.680</b></td>
+              <td><b>0.700</b></td>
+              <td><b>0.747</b></td>
+              <td><b>0.610</b></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure>
+          <img src="charts/precision_at_k.svg" alt="Precision at K comparison curve" class="chart-img">
+          <figcaption>Figure 1: Precision@K curve across candidate queue depths. The Random Forest model demonstrates substantial separation over the heuristic baseline and portfolio base rate across all operational budgets.</figcaption>
+        </figure>
+
+        <p>
+          At the target monthly capacity of $K=50$ pages, the Random Forest model achieves a Precision@50 of **0.680 vs. 0.240** for the baseline rule—representing a **2.83× efficiency improvement**. In the top 20 queue rows, precision reaches **0.700 vs. 0.150** (a **4.67× lift**).
+        </p>
+      </section>
+
+      <!-- Section 5: Feature Importances -->
+      <section>
+        <h2>5. Signal Interpretation &amp; Feature Importances</h2>
+        <figure>
+          <img src="charts/top_feature_importance.svg" alt="Top Feature Importance Chart" class="chart-img">
+          <figcaption>Figure 2: Top 10 feature importances (Gini impurity) from the Random Forest model.</figcaption>
+        </figure>
+        <p>
+          Feature analysis indicates that search consistency dominates decay prediction:
+        </p>
+        <ol>
+          <li><code>days_with_impressions</code> (16.1%): Indexing continuity is the single strongest indicator. Pages experiencing gaps in daily search impressions exhibit severe risk of structural decay.</li>
+          <li><code>log_impressions_90d</code> (12.8%): Scale of organic demand; high-volume URLs exhibit more pronounced and predictable decay curves.</li>
+          <li><code>avg_position</code> (10.8%): Pages ranking on the Page 1 / Page 2 boundary (ranks 8–15) suffer the highest volatility.</li>
+          <li><code>content_age_days</code> (9.5%): Content aging past 180 days steadily increases decay probability unless refreshed.</li>
+        </ol>
+      </section>
+
+      <!-- Section 6: Limitations -->
+      <section>
+        <h2>6. Limitations &amp; Scientific Framing</h2>
+        <p>
+          In keeping with scientific integrity, we declare the explicit boundaries of this work:
+        </p>
+        <ul>
+          <li><b>Predictive, Not Causal:</b> The model identifies pages at high risk of decline. It does NOT guarantee that executing a content refresh will causally reverse traffic loss. Validating causal recovery requires a randomized controlled A/B test.</li>
+          <li><b>Mean Reversion in Naive Signals:</b> In our signal audit, pages selected purely for recent click drops rebounded 67% of the time without intervention. Ranking by simple recent drops is an anti-signal.</li>
+          <li><b>Eligibility Floors:</b> The model is valid only for mature content ($age \ge 90$ days) with measurable baseline visibility ($impressions \ge 100$).</li>
+        </ul>
+      </section>
+
+      <!-- Section 7: Action Recommendations -->
+      <section>
+        <h2>7. Ranked Editorial Action Playbook</h2>
+        <p>
+          Model probabilities are paired with heuristic triggers to assign each page one of five actionable playbooks:
+        </p>
+        <ul>
+          <li><code>refresh_and_review_ctr</code> (22.2% of queue): High SERP visibility with below-benchmark CTR. Action: Optimize snippet titles and meta descriptions.</li>
+          <li><code>refresh</code> (27.4% of queue): High decay probability on aging core assets. Action: Update body copy, outdated statistics, and internal links.</li>
+          <li><code>refresh_and_review_engagement</code> (6.6% of queue): High clicks but low dwell time/scroll depth. Action: Improve UX, readability, and content formatting.</li>
+          <li><code>expand_and_refresh</code> (0.3% of queue): Thin content in high-competition search spaces. Action: Expand into comprehensive pillar asset.</li>
+          <li><code>monitor</code> (43.6% of queue): Stable or upward-trending content. Action: Protect from unnecessary modifications.</li>
+        </ul>
+      </section>
+
+      <!-- Section 8: Reproducibility -->
+      <section>
+        <h2>8. Reproducibility &amp; Receipts</h2>
+        <div class="repro-box">
+          <div>
+            <b>Code Repository:</b><br>
+            <a href="https://github.com/dasinithin/flyrank-ml-internship-starter" target="_blank">github.com/dasinithin/flyrank-ml-internship-starter</a>
+          </div>
+          <div>
+            <b>Hardware &amp; Runtime:</b><br>
+            Python 3.11.11 / scikit-learn 1.9.1 / Pandas 3.0.6<br>
+            Execution time: &lt; 25 seconds (Random Seed: 42)
+          </div>
+        </div>
+        <pre><code>git clone https://github.com/dasinithin/flyrank-ml-internship-starter.git
+cd flyrank-ml-internship-starter
+pip install -r requirements.txt
+python scripts/run_all.py</code></pre>
+      </section>
+
+      <!-- Section 9: Acknowledgments & Data Credit -->
+      <footer class="p1-ack">
+        <h2>9. Acknowledgments &amp; Data Credit</h2>
+        <p>
+          Built on the <b>FlyRank ML Internship dataset</b> — <a href="https://flyrank.ai" target="_blank">https://flyrank.ai</a>. The author thanks the FlyRank team for providing access to the anonymized search warehouse release.
+        </p>
+      </footer>
+    </div>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       DOOR 2: ENGINEERING CASE STUDY (Interactive, Modern, Metrics-First)
+       ════════════════════════════════════════════════════════════════════════ -->
+  <article class="pane pane2" aria-label="Door 2 — Engineering Case Study">
+    <div class="door-tag">
+      <span>DOOR 2 · ENGINEERING CASE STUDY · HIRING &amp; TECH LEADS</span>
+      <span>PRODUCTION SYSTEM PERSPECTIVE</span>
+    </div>
+    <div class="p2">
+      <!-- Hero -->
+      <header class="p2-hero">
+        <span class="p2-kicker">Applied Machine Learning · Search Intelligence</span>
+        <h1>From Search Console Firehose to a 50-Page High-Yield Refresh Queue</h1>
+        <p class="p2-lead">
+          How we engineered an ML decay prioritization engine on 30,000 URLs that delivers a <b>2.83× precision lift</b> over industry rule heuristics under strict grouped client-holdout validation.
+        </p>
+        <div class="p2-metrics-grid">
+          <div class="p2-card">
+            <div class="lbl">Precision@50 (Target)</div>
+            <div class="val good">0.680</div>
+            <div class="sub">vs. 0.240 baseline heuristic (2.83× lift)</div>
+          </div>
+          <div class="p2-card">
+            <div class="lbl">Top-20 Head Precision</div>
+            <div class="val good">0.700</div>
+            <div class="sub">vs. 0.150 baseline rule (4.67× lift)</div>
+          </div>
+          <div class="p2-card">
+            <div class="lbl">Cross-Domain ROC-AUC</div>
+            <div class="val">0.747</div>
+            <div class="sub">Evaluated on 100% unseen client domains</div>
+          </div>
+          <div class="p2-card">
+            <div class="lbl">Editorial Budget Match</div>
+            <div class="val">50 URLs</div>
+            <div class="sub">Prioritized monthly review quota</div>
+          </div>
+        </div>
+        <div class="p2-cta-row">
+          <a href="#p2-queue" class="btn btn-primary">Inspect Top Queue Rows</a>
+          <a href="https://github.com/dasinithin/flyrank-ml-internship-starter" target="_blank" class="btn btn-secondary">View GitHub Code</a>
+        </div>
+      </header>
+
+      <!-- Section: System Architecture -->
+      <section>
+        <h2>End-to-End System Architecture</h2>
+        <div class="p2-pipeline-box">
+          <div class="p2-pipeline-grid">
+            <div class="p2-pipe-node">
+              <b>1. Data Warehouse</b>
+              <span>30k URLs · 44 metrics<br>90-day search window</span>
+            </div>
+            <div class="p2-pipe-node">
+              <b>2. Feature Vector</b>
+              <span>26 clean signals<br>Zero target leakage</span>
+            </div>
+            <div class="p2-pipe-node" style="border-color:#34d399">
+              <b>3. Random Forest</b>
+              <span>Grouped client split<br>P(decline) scoring</span>
+            </div>
+            <div class="p2-pipe-node">
+              <b>4. Action Engine</b>
+              <span>5 playbook routings<br>Interpretable reasons</span>
+            </div>
+            <div class="p2-pipe-node" style="border-color:#34d399">
+              <b>5. Ranked Queue</b>
+              <span>Top 50 monthly triage<br>Human in the loop</span>
+            </div>
+          </div>
+        </div>
+        <p>
+          The architecture pairs ML scoring with heuristic rule explanations: <b>the model supplies the ranking order, while the rule supplies the human-readable explanation</b>. Editors see exactly why each page was flagged before making changes.
+        </p>
+        <figure style="margin:24px 0;background:#ffffff;padding:16px;border-radius:10px;border:1px solid #e2e8f0">
+          <img src="charts/top_reason_codes.svg" alt="Top Refresh Reason Codes Chart" class="chart-img">
+          <figcaption style="font-size:13px;color:#64748b;margin-top:10px">Figure 3: Frequency of transparent diagnostic reason codes triggered across the full 30,000-page corpus, providing explainability for every queue assignment.</figcaption>
+        </figure>
+      </section>
+
+      <!-- Section: Live Queue Preview -->
+      <section id="p2-queue">
+        <h2>Production Review Queue (Top 10 High-Confidence Candidates)</h2>
+        <p>
+          Each URL in the queue receives a composite refresh score (0–100), estimated decay probability, assigned editorial playbook, and transparent reason codes:
+        </p>
+        <div class="p2-interactive-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Content ID</th>
+                <th>Score</th>
+                <th>P(Decay)</th>
+                <th>Assigned Playbook</th>
+                <th>Key Reason Codes</th>
+                <th>90d Impressions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>#1</b></td>
+                <td><code>content_1f080331</code></td>
+                <td><b>81.9</b></td>
+                <td>0.786</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>12,834</td>
+              </tr>
+              <tr>
+                <td><b>#2</b></td>
+                <td><code>content_6aa43079</code></td>
+                <td><b>81.7</b></td>
+                <td>0.792</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>8,064</td>
+              </tr>
+              <tr>
+                <td><b>#3</b></td>
+                <td><code>content_9b83a214</code></td>
+                <td><b>81.6</b></td>
+                <td>0.850</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>2,498</td>
+              </tr>
+              <tr>
+                <td><b>#4</b></td>
+                <td><code>content_3e1a0b5c</code></td>
+                <td><b>80.8</b></td>
+                <td>0.814</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>3,393</td>
+              </tr>
+              <tr>
+                <td><b>#5</b></td>
+                <td><code>content_a0d8e239</code></td>
+                <td><b>80.8</b></td>
+                <td>0.771</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>13,790</td>
+              </tr>
+              <tr>
+                <td><b>#6</b></td>
+                <td><code>content_e47b91c2</code></td>
+                <td><b>80.8</b></td>
+                <td>0.848</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>1,622</td>
+              </tr>
+              <tr>
+                <td><b>#7</b></td>
+                <td><code>content_5b23d9fa</code></td>
+                <td><b>80.6</b></td>
+                <td>0.794</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>5,811</td>
+              </tr>
+              <tr>
+                <td><b>#8</b></td>
+                <td><code>content_7c12f0a8</code></td>
+                <td><b>80.4</b></td>
+                <td>0.828</td>
+                <td><span class="badge-act refresh">refresh</span></td>
+                <td>declining_with_demand, visible_opportunity</td>
+                <td>4,366</td>
+              </tr>
+              <tr>
+                <td><b>#9</b></td>
+                <td><code>content_8d41e7b3</code></td>
+                <td><b>80.2</b></td>
+                <td>0.824</td>
+                <td><span class="badge-act eng">refresh_and_review_engagement</span></td>
+                <td>low_engagement_visible_page, declining_with_demand</td>
+                <td>2,655</td>
+              </tr>
+              <tr>
+                <td><b>#10</b></td>
+                <td><code>content_c32a890e</code></td>
+                <td><b>80.1</b></td>
+                <td>0.831</td>
+                <td><span class="badge-act ctr">refresh_and_review_ctr</span></td>
+                <td>declining_with_demand, low_ctr_visible_page</td>
+                <td>2,621</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section: Employer 3-Sentence Summary -->
+      <section>
+        <h2>Employer-Facing Technical Summary</h2>
+        <p style="font-size:16.5px;line-height:1.65;background:#f8fafc;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0">
+          Built an end-to-end Search Intelligence machine learning pipeline on 30,000 pseudonymized Google Search and Analytics records to prioritize decaying organic URLs for monthly editorial remediation. Evaluated under a rigorous grouped client-holdout split to prevent domain memorization, our Random Forest classifier achieved a Precision@50 of 0.680 compared to 0.240 for industry baseline rules (a 2.83× efficiency gain). Deployed the findings as a public, reproducible research paper and action engine that maps decay risk directly to actionable content refresh playbooks.
+        </p>
+      </section>
+
+      <!-- Section: Data Credit -->
+      <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:14px;color:#64748b">
+        Built on the <b>FlyRank ML Internship dataset</b> — <a href="https://flyrank.ai" target="_blank" style="color:#059669;font-weight:600">https://flyrank.ai</a>.
+      </footer>
+    </div>
+  </article>
+
+  <!-- ════════════════════════════════════════════════════════════════════════
+       DOOR 3: PRACTITIONER PLAYBOOK (SEO & Editorial Strategy)
+       ════════════════════════════════════════════════════════════════════════ -->
+  <article class="pane pane3" aria-label="Door 3 — SEO Practitioner Playbook">
+    <div class="door-tag">
+      <span>DOOR 3 · PRACTITIONER PLAYBOOK · CONTENT LEADS &amp; SEO</span>
+      <span>ACTIONABLE EDITORIAL STRATEGY</span>
+    </div>
+    <div class="p3">
+      <div class="p3-wrap">
+        <header class="p3-head">
+          <div class="p3-kicker">SEO Data Science · Action Playbook</div>
+          <h1>Which Content Should You Refresh First? An Early-Warning Decay Detection System</h1>
+          <p class="p3-deck">
+            Why traditional "biggest recent drop" spreadsheets fail, how to fix your monthly 50-page review budget, and five operational playbooks that preserve organic rankings.
+          </p>
+          <div class="p3-meta">
+            <span>By Dasi Nithin</span>
+            <span>Dataset: 30,000 URLs</span>
+            <span>FlyRank ML Track</span>
+            <span>Status: Verified &amp; Deployed</span>
+          </div>
+        </header>
+
+        <!-- TL;DR -->
+        <aside class="p3-tldr">
+          <h2>Executive Summary (TL;DR)</h2>
+          <dl>
+            <dt>The Problem</dt>
+            <dd>Content teams waste hours updating pages that dropped temporarily due to seasonality or noise.</dd>
+            <dt>The Discovery</dt>
+            <dd>In real search data, pages with simple recent drops mean-reverted 67% of the time without edits!</dd>
+            <dt>The Solution</dt>
+            <dd>A machine-learned ranking that identifies structural decay with <b>68% precision</b> (vs 24% for static rules).</dd>
+            <dt>The Output</dt>
+            <dd>A ranked 50-page monthly sprint queue with specific reason codes and action playbooks.</dd>
+          </dl>
+        </aside>
+
+        <!-- Section: The 5 Playbooks -->
+        <section>
+          <h2>The 5 Tactical Editorial Playbooks</h2>
+          <figure style="margin:20px 0 28px;background:#ffffff;padding:16px;border-radius:10px;border:1px solid #fed7aa">
+            <img src="charts/action_mix.svg" alt="Suggested Action Mix Breakdown" class="chart-img">
+            <figcaption style="font-size:13px;color:#64748b;margin-top:10px">Figure 4: Portfolio-wide action mix breakdown. Over 56% of pages require proactive review or refresh, while 43.6% are classified as healthy and assigned to Monitor Only.</figcaption>
+          </figure>
+
+          <div class="p3-playbook-card hl">
+            <h3>1. Refresh &amp; Review CTR (22.2% of Queue)</h3>
+            <p><b>Diagnosis:</b> The URL commands strong impression volume on Page 1 (ranks 1–5), but its click-through rate is below SERP benchmarks. Decay is occurring because competitors have written more compelling snippets.</p>
+            <div class="p3-rule-row do">
+              <b>DO:</b>
+              <span>Rewrite the <code>&lt;title&gt;</code> tag and meta description to align with modern intent. Add schema markup.</span>
+            </div>
+            <div class="p3-rule-row dont">
+              <b>DO NOT:</b>
+              <span>Do not rewrite the body copy or alter URL structure—the page already ranks well!</span>
+            </div>
+          </div>
+
+          <div class="p3-playbook-card">
+            <h3>2. Core Content Refresh (27.4% of Queue)</h3>
+            <p><b>Diagnosis:</b> Established page (&gt;180 days old) showing multi-week decline in impressions and rankings. Comprehensive search decay across core keywords.</p>
+            <div class="p3-rule-row do">
+              <b>DO:</b>
+              <span>Update outdated dates, statistics, case studies, and broken links. Add new subheadings addressing recent user queries.</span>
+            </div>
+            <div class="p3-rule-row dont">
+              <b>DO NOT:</b>
+              <span>Do not delete existing ranking headings or change URL slugs.</span>
+            </div>
+          </div>
+
+          <div class="p3-playbook-card">
+            <h3>3. Refresh &amp; Review Engagement (6.6% of Queue)</h3>
+            <p><b>Diagnosis:</b> Healthy CTR, but high bounce rate and low scroll depth (&lt;30%). Users click through but leave unsatisfied.</p>
+            <div class="p3-rule-row do">
+              <b>DO:</b>
+              <span>Improve typography, add visual diagrams/tables, remove intrusive popups, and place the primary answer above the fold.</span>
+            </div>
+            <div class="p3-rule-row dont">
+              <b>DO NOT:</b>
+              <span>Do not change search metadata; the snippet is already succeeding.</span>
+            </div>
+          </div>
+
+          <div class="p3-playbook-card">
+            <h3>4. Expand &amp; Refresh (0.3% of Queue)</h3>
+            <p><b>Diagnosis:</b> Thin content (&lt;1,200 words) facing high commercial competition. Vulnerable to comprehensive competitor guides.</p>
+            <div class="p3-rule-row do">
+              <b>DO:</b>
+              <span>Expand the content into a pillar resource. Add FAQ sections, step-by-step guides, and expert commentary.</span>
+            </div>
+            <div class="p3-rule-row dont">
+              <b>DO NOT:</b>
+              <span>Do not leave thin pages unchanged when targeting high search volume terms.</span>
+            </div>
+          </div>
+
+          <div class="p3-playbook-card">
+            <h3>5. Monitor Only (43.6% of Queue)</h3>
+            <p><b>Diagnosis:</b> Content currently exhibiting stable or upward organic momentum.</p>
+            <div class="p3-rule-row do">
+              <b>DO:</b>
+              <span>Protect the URL from ad-hoc optimization. Monitor rankings quarterly.</span>
+            </div>
+            <div class="p3-rule-row dont">
+              <b>DO NOT:</b>
+              <span>NEVER touch content on an organic growth streak just because an audit flagged it as old.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ROI Scenario -->
+        <section class="p3-roi-box">
+          <h3>Editorial ROI Scenario</h3>
+          <p>
+            In a monthly batch of 50 reviewed URLs, our Random Forest queue identifies <b>34 truly decaying pages</b> (Precision = 0.680), compared to only <b>12 pages</b> identified by industry baseline rules (Precision = 0.240).
+          </p>
+          <p>
+            <b>Net Impact:</b> 22 additional high-value decaying pages are intercepted and remediated every single month, preventing organic traffic erosion before rankings collapse.
+          </p>
+        </section>
+
+        <!-- Data Credit -->
+        <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:14px;color:#64748b">
+          Built on the <b>FlyRank ML Internship dataset</b> — <a href="https://flyrank.ai" target="_blank" style="color:#059669;font-weight:600">https://flyrank.ai</a>.
+        </footer>
+      </div>
+    </div>
+  </article>
+
+</main>
+
+<footer class="global-footer">
+  <p>
+    FlyRank Applied Search Intelligence Track · Capstone Project by <b>Dasi Nithin</b><br>
+    Built on the <b>FlyRank ML Internship dataset</b> — <a href="https://flyrank.ai" target="_blank">https://flyrank.ai</a> · 
+    <a href="https://github.com/dasinithin/flyrank-ml-internship-starter" target="_blank">GitHub Repository</a>
+  </p>
+</footer>
+
+<script>
+// Tab switcher logic
+const tabs = document.querySelectorAll('.tabs button');
+function setView(view) {
+  document.body.dataset.view = view;
+  tabs.forEach(btn => {
+    const isActive = btn.dataset.view === view;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  try {
+    history.replaceState(null, '', '#' + view);
+  } catch(e) {}
+}
+tabs.forEach(btn => {
+  btn.addEventListener('click', () => setView(btn.dataset.view));
+});
+// Read initial hash or default to 'all'
+const initialHash = location.hash.replace('#', '');
+if (['all', 'd1', 'd2', 'd3'].includes(initialHash)) {
+  setView(initialHash);
+} else {
+  setView('all');
+}
+</script>
+</body>
+</html>
